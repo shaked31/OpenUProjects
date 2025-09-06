@@ -12,11 +12,14 @@ using namespace std;
 using namespace boost::asio;
 using namespace std::filesystem;
 
+// const path BASE_DIR = "C:\\backupsrv";
 
 int main() {
     const string address = "127.0.0.1";
     const string port = "5000";
     try {
+        // if (exists(BASE_DIR))
+        //     cout << "exists1" << endl;
         io_context context;
         Server server(context, 5000);
         server.run();

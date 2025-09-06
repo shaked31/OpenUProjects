@@ -15,22 +15,25 @@
 #include <fstream>
 
 
+
 using boost::asio::ip::tcp;
 using namespace std;
+using namespace filesystem;
 
 class ClientHandler {
 public:
-    ClientHandler(tcp::socket sock);
-    void start_session();
+    void start_session(tcp::socket sock);
 
 private:
-    tcp::socket clientHandlerSock;
-    void handle_list_req(Request req);
-    string generateFilename();
+    void handle_list_req(tcp::socket sock, const Request& req);
+    void handle_retrieve_req(tcp::socket sock, const FileOpsRequest& req);
+    void handle_delete_req(tcp::socket sock, const FileOpsRequest& req);
+    void handle_save_req(tcp::socket sock, const SaveFileRequest &req);
 
-    void handle_retreive_req();
-    void handle_delete_req();
-    void handle_save_req();
+    bool folder_exists(const std::string& path);
+    path safe_path(const path& baseDir, const string& filename);
+    string generateFilename();
+    void save_payload_to_file(tcp::socket sock, path& filePath, uint32_t fileSize);
 };
 
 

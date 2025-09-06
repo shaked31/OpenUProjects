@@ -14,10 +14,13 @@ using namespace std;
 
 class Serializer {
 public:
-    vector<uint8_t> serializeResponse(const FullFileResponse &res);
+    vector<uint8_t> serializeFullFileResponse(const FullFileResponse& res);
+    vector<uint8_t> serializeResponse(const Response& res);
+    vector<uint8_t> serializePartialResponse(const PartialFileResponse& res);
+
     void deserializeResponse(const vector<uint8_t>& buffer, Response& res);
 
-    vector<uint8_t> serializeRequest(const Request &res);
+    vector<uint8_t> serializeRequest(const Request& res);
     void deserializeRequest(const vector<uint8_t>& buffer, Request& req);
 };
 

@@ -5,22 +5,28 @@
 #ifndef GENERALEXCEPTIONS_H
 #define GENERALEXCEPTIONS_H
 
+#include <iostream>
 #include <exception>
 #include <string>
+#include <boost/asio.hpp>
+#include "../Network/Protocols/Protocol.h"
+#include "../Utils/Serializer.h"
+
+#define VERSION 1
 
 using namespace std;
+using boost::asio::ip::tcp;
 
 class GeneralException : public std::exception {
 private:
     string message;
+    Response res;
+
 
 public:
-    GeneralException(const string& msg = "A general error has occurred") : message(msg) {}
-
-    const char* what() const noexcept override {
-        // override what()
-        return message.c_str();
-    }
+    GeneralException(const string& msg);
+    const char* what() const noexcept override;
+    void sendGeneralErrorResponse(tcp::socket sock);
 };
 
 #endif //GENERALEXCEPTIONS_H

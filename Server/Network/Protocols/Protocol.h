@@ -30,6 +30,8 @@ struct Request {
     OpCode op;
     Request(const uint32_t uid, const uint8_t version, const OpCode op)
         : uid(uid), version(version), op(op) {}
+    Request(const Request& otherReq)
+        : uid(otherReq.uid), version(otherReq.version), op(otherReq.op) {}
     Request() = default;
 };
 #pragma pack(pop)
