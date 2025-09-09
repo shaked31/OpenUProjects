@@ -6,17 +6,15 @@
 #define REQUEST_H
 
 #include <boost/asio.hpp>
-using namespace boost::asio;
-using ip::tcp;
 
 
 class Server {
 public:
-    Server(io_context& context, unsigned short int port); // constructor
+    Server(boost::asio::io_context& context, unsigned short int port); // constructor
     [[noreturn]] void run();
 
 private:
-    tcp::acceptor a;
+    boost::asio::ip::tcp::acceptor a;
 };
 
 

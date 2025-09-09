@@ -4,8 +4,8 @@
 
 #include "Serializer.h"
 
-vector<uint8_t> Serializer::serializeResponse(const Response& res) {
-    vector<uint8_t> buffer = {}; // build a buffer that each element is 1 byte
+std::vector<uint8_t> Serializer::serializeResponse(const Response& res) {
+    std::vector<uint8_t> buffer = {}; // build a buffer that each element is 1 byte
     buffer.push_back(res.version);
 
     const uint16_t statusVal = static_cast<uint16_t>(res.status);
@@ -15,8 +15,8 @@ vector<uint8_t> Serializer::serializeResponse(const Response& res) {
     return buffer;
 }
 
-vector<uint8_t> Serializer::serializePartialResponse(const PartialFileResponse& res) {
-    vector<uint8_t> buffer = serializeResponse(res); // build a buffer that each element is 1 byte
+std::vector<uint8_t> Serializer::serializePartialResponse(const PartialFileResponse& res) {
+    std::vector<uint8_t> buffer = serializeResponse(res); // build a buffer that each element is 1 byte
 
     buffer.push_back(res.name_len & 0xFF); // take lower byte
     buffer.push_back((res.name_len >> 8) & 0xFF); // takes upper byte
@@ -26,8 +26,8 @@ vector<uint8_t> Serializer::serializePartialResponse(const PartialFileResponse& 
     return buffer;
 }
 
-vector<uint8_t> Serializer::serializeFullFileResponse(const FullFileResponse& res) {
-    vector<uint8_t> buffer = serializePartialResponse(res); // build a buffer that each element is 1 byte
+std::vector<uint8_t> Serializer::serializeFullFileResponse(const FullFileResponse& res) {
+    std::vector<uint8_t> buffer = serializePartialResponse(res); // build a buffer that each element is 1 byte
 
     buffer.push_back(res.size & 0xFF);
     buffer.push_back((res.size >> 8) & 0xFF);

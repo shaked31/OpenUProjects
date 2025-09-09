@@ -1,12 +1,8 @@
 import struct
 import os
 import socket
-from copyreg import constructor
-
 import Request
 import FilesReader
-
-
 
 
 def create_id():
@@ -82,15 +78,18 @@ def request_save_files(uid, filename):
     sock = send_request(save_file_request)
 
     # wait for a comment from the server
-    header = recv_exact(sock, 5)
-    version, status, name_len = struct.unpack('<BHH', header)
-    filename = recv_exact(sock, name_len).rstrip(b'\x00').decode('utf-8')
-
-    if status == 212:
-        print(f"Response from server received, file {filename} backup was successful")
+    header = recv_exact(sock, 3)
+    version, status = struct.unpack('<BH', header)
+    if status == 1002:
+        print("No files for this user")
+        return
+    elif status == 1003:
+        print("A general error on the server occurred")
+        return
     else:
-        print(f"An error occurred: {status}")
-
+        name_len_data = recv_exact(sock, 2)
+        name_len = struct.unpack('<H', name_len_data)[0]
+        filename = recv_exact(sock, name_len).rstrip(b'\x00').decode('utf-8')
     # sock.close()
 
 def request_retrieve_files(uid, filename):

@@ -4,26 +4,31 @@
 
 #include "Server.h"
 #include "ClientHandler.h"
+#include <thread>
 
-
-Server::Server(io_context& context, const unsigned short int port):
-    a(context, tcp::endpoint(tcp::v4(), port)) {} // Constructor
+Server::Server(boost::asio::io_context& context, const unsigned short int port):
+    a(context, boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(), port)) {} // Constructor
 
 [[noreturn]] void Server::run() {
     // [[noreturn]] tells the compiler that this function will not return control to it's owner
     try {
-        ClientHandler cl;
+
         while (true) {
-            tcp::socket sock = a.accept();
-            cl.start_session(std::move(sock));
+            boost::asio::ip::tcp::socket sock = a.accept();
+
+            std::thread([sock = std::move(sock)]() mutable {
+                ClientHandler cl;
+                cl.start_session(std::move(sock));
+            }).detach();
         }
     }
+
     catch (const boost::system::system_error& e) {
-        if (e.code() == error::eof) {
-            cout << "Client disconnected (EOF)" << endl;
+        if (e.code() == boost::asio::error::eof) {
+            std::cout << "Client disconnected (EOF)" << std::endl;
         }
         else {
-            cerr << "Exception: " << e.what() << endl;
+            std::cerr << "Exception: " << e.what() << std::endl;
         }
     }
 }

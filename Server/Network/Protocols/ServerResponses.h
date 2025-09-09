@@ -4,9 +4,18 @@
 
 #ifndef SERVERRESPONSES_H
 #define SERVERRESPONSES_H
-#include "Protocol.h"
+#include "ProtocolEnums.h"
 #include <string>
-#include <vector>
+
+#pragma pack(push, 1)
+struct Response {
+    uint8_t version;
+    Status status;
+    Response(const uint8_t version, const Status status)
+        : version(version), status(status) {}
+    Response() = default;
+};
+#pragma pack(pop)
 
 #pragma pack(push, 1)
 struct PartialFileResponse : Response {

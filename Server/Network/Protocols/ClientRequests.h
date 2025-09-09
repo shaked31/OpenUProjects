@@ -4,12 +4,22 @@
 
 #ifndef CLIENTREQUESTS_H
 #define CLIENTREQUESTS_H
-#include <algorithm>
-#include <cstdint>
 #include <string>
-#include <vector>
+#include "ProtocolEnums.h"
 
-#include "Protocol.h"
+
+#pragma pack(push, 1)
+struct Request {
+    uint32_t uid;
+    uint8_t version;
+    OpCode op;
+    Request(const uint32_t uid, const uint8_t version, const OpCode op)
+        : uid(uid), version(version), op(op) {}
+    Request(const Request& otherReq)
+        : uid(otherReq.uid), version(otherReq.version), op(otherReq.op) {}
+    Request() = default;
+};
+#pragma pack(pop)
 
 #pragma pack(push, 1)
 struct ListRequest : Request {
@@ -43,19 +53,17 @@ struct FileOpsRequest : Request {
 #pragma pack(push, 1)
 struct SaveFileRequest : FileOpsRequest {
     uint32_t size;
-    std::vector<uint8_t> payload;
     SaveFileRequest(const uint32_t uid, const uint8_t version,
-    const uint16_t name_len, const std::string& filename, const uint32_t size, std::vector<uint8_t> payload)
+    const uint16_t name_len, const std::string& filename, const uint32_t size)
         : FileOpsRequest(uid, OpCode::SAVE_FILE, version, name_len, filename),
-            size(size),
-            payload(std::move(payload)) {}
+            size(size) {}
 
-    SaveFileRequest(const Request& req, const uint16_t name_len, const std::string& filename, const uint32_t size, std::vector<uint8_t> payload)
-        : FileOpsRequest(req, name_len, filename), size(size), payload(std::move(payload)) {}
+    SaveFileRequest(const Request& req, const uint16_t name_len, const std::string& filename, const uint32_t size)
+        : FileOpsRequest(req, name_len, filename), size(size) {}
 
-    SaveFileRequest(const FileOpsRequest& req) : FileOpsRequest(req), size(0), payload({}) {}
+    SaveFileRequest(const FileOpsRequest& req) : FileOpsRequest(req), size(0) {}
 
-    SaveFileRequest(const Request& req) : FileOpsRequest(req, 0, "") {}
+    SaveFileRequest(const Request& req) : FileOpsRequest(req, 0, ""), size(0) {}
 
     SaveFileRequest() = default;
 };
