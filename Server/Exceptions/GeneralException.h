@@ -7,7 +7,7 @@
 
 #include <exception>
 #include <string>
-#include <boost/asio.hpp>
+#include <asio.hpp>
 #include "../Utils/Serializer.h"
 
 #define VERSION 1
@@ -20,7 +20,7 @@ private:
 public:
     GeneralException(const std::string& msg);
     const char* what() const noexcept override;
-    void sendGeneralErrorResponse(boost::asio::ip::tcp::socket sock);
+    void sendGeneralErrorResponse(asio::ip::tcp::socket sock);
 };
 
 #endif //GENERALEXCEPTIONS_H

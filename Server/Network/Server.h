@@ -5,16 +5,16 @@
 #ifndef REQUEST_H
 #define REQUEST_H
 
-#include <boost/asio.hpp>
+#include <asio.hpp>
 
 
 class Server {
 public:
-    Server(boost::asio::io_context& context, unsigned short int port); // constructor
+    Server(asio::io_context& context, unsigned short int port); // constructor
     [[noreturn]] void run();
 
 private:
-    boost::asio::ip::tcp::acceptor a;
+    asio::ip::tcp::acceptor a;
 };
 
 

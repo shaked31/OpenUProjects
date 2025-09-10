@@ -20,10 +20,10 @@
 
 const std::filesystem::path BASE_DIR = L"C:\\backupsrv";
 
-void ClientHandler::start_session(boost::asio::ip::tcp::socket sock) {
+void ClientHandler::start_session(asio::ip::tcp::socket sock) {
     try {
         Request req{};
-        boost::asio::read(sock, boost::asio::buffer(&req, sizeof(req)));
+        asio::read(sock, asio::buffer(&req, sizeof(req)));
         if (req.version != VERSION) {
             throw GeneralException("Version of client not supported");
         }
@@ -33,9 +33,14 @@ void ClientHandler::start_session(boost::asio::ip::tcp::socket sock) {
             handle_list_req(sock, req);
         else {
             FileOpsRequest fileOpsReq(req);
-            boost::asio::read(sock, boost::asio::buffer(&fileOpsReq.name_len, NAME_LEN_BYTES));
+            asio::read(sock, asio::buffer(&fileOpsReq.name_len, NAME_LEN_BYTES));
             fileOpsReq.filename.resize(fileOpsReq.name_len);
-            boost::asio::read(sock, boost::asio::buffer(fileOpsReq.filename.data(), fileOpsReq.name_len));
+
+            asio::read(sock, asio::buffer(fileOpsReq.filename.data(), fileOpsReq.name_len));
+            fileOpsReq.filename.erase(
+                std::remove_if(fileOpsReq.filename.begin(), fileOpsReq.filename.end(),
+                    [](char c){return c=='\n' || c=='\r';}),
+                    fileOpsReq.filename.end());
 
             if (req.op == OpCode::RETRIEVE_FILE)
                 handle_retrieve_req(sock, fileOpsReq);
@@ -43,7 +48,7 @@ void ClientHandler::start_session(boost::asio::ip::tcp::socket sock) {
                 handle_delete_req(sock, fileOpsReq);
             else if (req.op == OpCode::SAVE_FILE) {
                 SaveFileRequest saveFileReq(fileOpsReq);
-                boost::asio::read(sock, boost::asio::buffer(&saveFileReq.size, FILE_SIZE_BYTES));
+                asio::read(sock, asio::buffer(&saveFileReq.size, FILE_SIZE_BYTES));
                 handle_save_req(sock, saveFileReq);
             }
             else {
@@ -52,13 +57,13 @@ void ClientHandler::start_session(boost::asio::ip::tcp::socket sock) {
         }
     }
     catch (GeneralException& e) {
-        std::cout << e.what() << std::endl;
         e.sendGeneralErrorResponse(std::move(sock));
+        sock.close();
     }
 }
 
 
-void ClientHandler::handle_retrieve_req(boost::asio::ip::tcp::socket& sock, const FileOpsRequest& req) {
+void ClientHandler::handle_retrieve_req(asio::ip::tcp::socket& sock, const FileOpsRequest& req) {
     try {
         const std::filesystem::path folderPath = BASE_DIR / std::to_string(req.uid);
         const std::filesystem::path targetFilePath = safe_path(folderPath, req.filename);
@@ -68,7 +73,7 @@ void ClientHandler::handle_retrieve_req(boost::asio::ip::tcp::socket& sock, cons
             Response res{};
             res.version = VERSION;
             res.status = Status::NO_FILES_IN_SERVER_ERR;
-            boost::asio::write(sock, boost::asio::buffer(&res, sizeof(res)));
+            asio::write(sock, asio::buffer(&res, sizeof(res)));
 
             std::cout << "Response number " <<  static_cast<int>(res.status) << " was sent to client" << std::endl << std::endl;
             throw std::filesystem::filesystem_error("user doesnt exist", ec);
@@ -79,9 +84,9 @@ void ClientHandler::handle_retrieve_req(boost::asio::ip::tcp::socket& sock, cons
             PartialFileResponse partRes(VERSION, Status::FILE_NOT_EXISTS_ERR, req.name_len, req.filename);
             Serializer serObj;
             std::vector<uint8_t> serialized = serObj.serializePartialResponse(partRes);
-            boost::asio::write(sock, boost::asio::buffer(serialized.data(), serialized.size()));
+            asio::write(sock, asio::buffer(serialized.data(), serialized.size()));
 
-            std::cout << "Response number " <<  static_cast<int>(partRes.status) << " with file '" <<  partRes.filename << "' was sent to client" << std::endl << std::endl;
+            std::cout << "Response number " <<  static_cast<int>(partRes.status) << " was sent to client" << std::endl << std::endl;
             throw std::filesystem::filesystem_error("file doesnt exist", ec);
         }
 
@@ -94,7 +99,7 @@ void ClientHandler::handle_retrieve_req(boost::asio::ip::tcp::socket& sock, cons
 
         Serializer serObj;
         std::vector<uint8_t> serialized = serObj.serializeFullFileResponse(fullFileRes);
-        boost::asio::write(sock, boost::asio::buffer(serialized.data(), serialized.size()));
+        asio::write(sock, asio::buffer(serialized.data(), serialized.size()));
 
         char payloadBuffer[BUFFER_SIZE];
         while (true) {
@@ -103,16 +108,17 @@ void ClientHandler::handle_retrieve_req(boost::asio::ip::tcp::socket& sock, cons
             if (size <= 0) {
                 break;
             }
-            boost::asio::write(sock, boost::asio::buffer(payloadBuffer, file.gcount()));
+            asio::write(sock, asio::buffer(payloadBuffer, file.gcount()));
         }
         file.close();
+        std::cout << "Response number " <<  static_cast<int>(fullFileRes.status) << " with file '" <<  fullFileRes.filename << "' was sent to client" << std::endl << std::endl;
     }
     catch (const std::filesystem::filesystem_error& e) {
-        std::cout << e.what() << std::endl;
+        sock.close();
     }
 }
 
-void ClientHandler::handle_delete_req(boost::asio::ip::tcp::socket& sock, const FileOpsRequest& req) {
+void ClientHandler::handle_delete_req(asio::ip::tcp::socket& sock, const FileOpsRequest& req) {
     try {
         const std::filesystem::path targetUserPath = BASE_DIR / std::to_string(req.uid);
         if (!folder_exists(targetUserPath.string())) {
@@ -120,7 +126,7 @@ void ClientHandler::handle_delete_req(boost::asio::ip::tcp::socket& sock, const 
             Response res{};
             res.version = VERSION;
             res.status = Status::NO_FILES_IN_SERVER_ERR;
-            boost::asio::write(sock, boost::asio::buffer(&res, sizeof(res)));
+            asio::write(sock, asio::buffer(&res, sizeof(res)));
 
             std::cout << "Response number " <<  static_cast<int>(res.status) << " was sent to client" << std::endl << std::endl;
         }
@@ -130,7 +136,7 @@ void ClientHandler::handle_delete_req(boost::asio::ip::tcp::socket& sock, const 
             PartialFileResponse partRes(VERSION, Status::FILE_OPS_OK, req.name_len, req.filename);
             Serializer serObj;
             std::vector<uint8_t> serialized = serObj.serializePartialResponse(partRes);
-            boost::asio::write(sock, boost::asio::buffer(serialized.data(), serialized.size()));
+            asio::write(sock, asio::buffer(serialized.data(), serialized.size()));
 
             std::cout << "Response number " <<  static_cast<int>(partRes.status) << " with file '" <<  partRes.filename << "' was sent to client" << std::endl << std::endl;
         }
@@ -138,18 +144,18 @@ void ClientHandler::handle_delete_req(boost::asio::ip::tcp::socket& sock, const 
             PartialFileResponse partRes(VERSION, Status::FILE_NOT_EXISTS_ERR, req.name_len, req.filename);
             Serializer serObj;
             std::vector<uint8_t> serialized = serObj.serializePartialResponse(partRes);
-            boost::asio::write(sock, boost::asio::buffer(serialized.data(), serialized.size()));
+            asio::write(sock, asio::buffer(serialized.data(), serialized.size()));
 
             std::cout << "Response number " <<  static_cast<int>(partRes.status) << " with file '" <<  partRes.filename << "' was sent to client" << std::endl << std::endl;
         }
     }
     catch (GeneralException& e) {
-        std::cout << e.what() << std::endl;
         e.sendGeneralErrorResponse(std::move(sock));
+        sock.close();
     }
 }
 
-void ClientHandler::handle_save_req(boost::asio::ip::tcp::socket& sock, const SaveFileRequest& req) {
+void ClientHandler::handle_save_req(asio::ip::tcp::socket& sock, const SaveFileRequest& req) {
     try {
         const std::filesystem::path userTargetPath = BASE_DIR / std::to_string(req.uid);
         create_directories(userTargetPath);
@@ -160,28 +166,27 @@ void ClientHandler::handle_save_req(boost::asio::ip::tcp::socket& sock, const Sa
         PartialFileResponse partRes(VERSION, Status::FILE_OPS_OK, req.name_len, req.filename);
         Serializer serObj;
         std::vector<uint8_t> serialized = serObj.serializePartialResponse(partRes);
-        boost::asio::write(sock, boost::asio::buffer(serialized.data(), serialized.size()));
+        asio::write(sock, asio::buffer(serialized.data(), serialized.size()));
 
         std::cout << "Response number " <<  static_cast<int>(partRes.status) << " with file '" <<  partRes.filename << "' was sent to client" << std::endl << std::endl;
     }
     catch (const std::filesystem::filesystem_error& e) {
-        std::cerr << e.what() << std::endl;
         Response res{};
         res.version = VERSION;
         res.status = Status::NO_FILES_IN_SERVER_ERR;
-        boost::asio::write(sock, boost::asio::buffer(&res, sizeof(res)));
+        asio::write(sock, asio::buffer(&res, sizeof(res)));
 
         std::cout << "Response number " <<  static_cast<int>(res.status) << " was sent to client" << std::endl << std::endl;
     }
     catch (GeneralException& e) {
-        std::cerr << e.what() << std::endl;
         e.sendGeneralErrorResponse(std::move(sock));
+        sock.close();
     }
 }
 
 
 
-void ClientHandler::handle_list_req(boost::asio::ip::tcp::socket& sock, const Request& req) {
+void ClientHandler::handle_list_req(asio::ip::tcp::socket& sock, const Request& req) {
 
     TempFile tmpFilename(generateFilename());
 
@@ -231,7 +236,7 @@ void ClientHandler::handle_list_req(boost::asio::ip::tcp::socket& sock, const Re
 
         Serializer serObj;
         std::vector<uint8_t> serialized = serObj.serializeFullFileResponse(fullFileRes);
-        boost::asio::write(sock, boost::asio::buffer(serialized.data(), serialized.size()));
+        asio::write(sock, asio::buffer(serialized.data(), serialized.size()));
 
         char payloadBuffer[BUFFER_SIZE];
         while (true) {
@@ -240,7 +245,7 @@ void ClientHandler::handle_list_req(boost::asio::ip::tcp::socket& sock, const Re
             if (size <= 0) {
                 break;
             }
-            boost::asio::write(sock, boost::asio::buffer(payloadBuffer, inNewFile.gcount()));
+            asio::write(sock, asio::buffer(payloadBuffer, inNewFile.gcount()));
         }
         inNewFile.close();
 
@@ -248,24 +253,23 @@ void ClientHandler::handle_list_req(boost::asio::ip::tcp::socket& sock, const Re
 
     }
     catch (const std::filesystem::filesystem_error& e) {
-        std::cerr << e.what() << std::endl;
         Response res{};
         res.version = VERSION;
         res.status = Status::NO_FILES_IN_SERVER_ERR;
-        boost::asio::write(sock, boost::asio::buffer(&res, sizeof(res)));
+        asio::write(sock, asio::buffer(&res, sizeof(res)));
 
         std::cout << "Response number " <<  static_cast<int>(res.status) << " was sent to client" << std::endl << std::endl;
+
+        sock.close();
     }
 
     catch (GeneralException& e) {
-        std::cerr << e.what() << std::endl;
         e.sendGeneralErrorResponse(std::move(sock));
+        sock.close();
     }
-
-    // clientHandlerSock.close();
 }
 
-void ClientHandler::save_payload_to_file(boost::asio::ip::tcp::socket& sock, const std::filesystem::path &filePath, const uint32_t fileSize) {
+void ClientHandler::save_payload_to_file(asio::ip::tcp::socket& sock, const std::filesystem::path &filePath, const uint32_t fileSize) {
     std::ofstream file(filePath, std::ios::binary | std::ios::trunc);
     if (!file.is_open()) {
         throw GeneralException("Couldn't open file for writing");
@@ -278,7 +282,7 @@ void ClientHandler::save_payload_to_file(boost::asio::ip::tcp::socket& sock, con
 
     while (remainingSize > 0) {
         std::size_t bytesToRead = std::min<uint32_t>(buffer.size(), remainingSize);
-        std::size_t bytesRead = boost::asio::read(sock, boost::asio::buffer(buffer.data(), bytesToRead));
+        std::size_t bytesRead = asio::read(sock, asio::buffer(buffer.data(), bytesToRead));
 
         file.write(buffer.data(), bytesRead);
         remainingSize -= bytesRead;

@@ -9,9 +9,9 @@
 
 #pragma pack(push, 1)
 struct Response {
-    uint8_t version;
+    std::uint8_t version;
     Status status;
-    Response(const uint8_t version, const Status status)
+    Response(const std::uint8_t version, const Status status)
         : version(version), status(status) {}
     Response() = default;
 };
@@ -19,9 +19,9 @@ struct Response {
 
 #pragma pack(push, 1)
 struct PartialFileResponse : Response {
-    uint16_t name_len;
+    std::uint16_t name_len;
     std::string filename;
-    PartialFileResponse(const uint8_t version, const Status status, const uint16_t name_len , const std::string &filename)
+    PartialFileResponse(const std::uint8_t version, const Status status, const std::uint16_t name_len , const std::string &filename)
         : Response(version, status), name_len(name_len), filename(filename) {}
     PartialFileResponse();
 };
@@ -29,9 +29,9 @@ struct PartialFileResponse : Response {
 
 #pragma pack(push, 1)
 struct FullFileResponse : PartialFileResponse {
-    uint32_t size;
-    FullFileResponse(const uint8_t version, const Status status,
-    const uint16_t name_len, const std::string &filename, const uint32_t size)
+    std::uint32_t size;
+    FullFileResponse(const std::uint8_t version, const Status status,
+    const std::uint16_t name_len, const std::string &filename, const std::uint32_t size)
         : PartialFileResponse(version, status, name_len, filename),
             size(size) {}
 

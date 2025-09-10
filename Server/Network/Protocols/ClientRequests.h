@@ -4,16 +4,17 @@
 
 #ifndef CLIENTREQUESTS_H
 #define CLIENTREQUESTS_H
+#include <cstdint>
 #include <string>
 #include "ProtocolEnums.h"
 
 
 #pragma pack(push, 1)
 struct Request {
-    uint32_t uid;
-    uint8_t version;
+    std::uint32_t uid;
+    std::uint8_t version;
     OpCode op;
-    Request(const uint32_t uid, const uint8_t version, const OpCode op)
+    Request(const std::uint32_t uid, const std::uint8_t version, const OpCode op)
         : uid(uid), version(version), op(op) {}
     Request(const Request& otherReq)
         : uid(otherReq.uid), version(otherReq.version), op(otherReq.op) {}
@@ -23,7 +24,7 @@ struct Request {
 
 #pragma pack(push, 1)
 struct ListRequest : Request {
-    ListRequest(const uint32_t uid, const uint8_t version)
+    ListRequest(const std::uint32_t uid, const std::uint8_t version)
         : Request(uid, version, OpCode::LIST_FILES) {}
     ListRequest(const Request& request)
         : Request(request.uid, request.version, OpCode::LIST_FILES) {}
@@ -32,14 +33,14 @@ struct ListRequest : Request {
 
 #pragma pack(push, 1)
 struct FileOpsRequest : Request {
-    uint16_t name_len;
+    std::uint16_t name_len;
     std::string filename;
-    FileOpsRequest(const uint32_t uid, const OpCode op, const uint8_t version,
-        const uint16_t name_len, std::string filename)
+    FileOpsRequest(const std::uint32_t uid, const OpCode op, const std::uint8_t version,
+        const std::uint16_t name_len, std::string filename)
             : Request(uid, version, op),
                 name_len(name_len),
                 filename(std::move(filename)) {}
-    FileOpsRequest(const Request& otherReq, const uint16_t name_len, std::string filename)
+    FileOpsRequest(const Request& otherReq, const std::uint16_t name_len, std::string filename)
         : Request(otherReq.uid, otherReq.version, otherReq.op),
         name_len(name_len), filename(std::move(filename)) {}
 
@@ -52,13 +53,13 @@ struct FileOpsRequest : Request {
 
 #pragma pack(push, 1)
 struct SaveFileRequest : FileOpsRequest {
-    uint32_t size;
-    SaveFileRequest(const uint32_t uid, const uint8_t version,
-    const uint16_t name_len, const std::string& filename, const uint32_t size)
+    std::uint32_t size;
+    SaveFileRequest(const std::uint32_t uid, const std::uint8_t version,
+    const std::uint16_t name_len, const std::string& filename, const std::uint32_t size)
         : FileOpsRequest(uid, OpCode::SAVE_FILE, version, name_len, filename),
             size(size) {}
 
-    SaveFileRequest(const Request& req, const uint16_t name_len, const std::string& filename, const uint32_t size)
+    SaveFileRequest(const Request& req, const std::uint16_t name_len, const std::string& filename, const std::uint32_t size)
         : FileOpsRequest(req, name_len, filename), size(size) {}
 
     SaveFileRequest(const FileOpsRequest& req) : FileOpsRequest(req), size(0) {}

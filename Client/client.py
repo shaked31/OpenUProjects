@@ -34,8 +34,7 @@ def recv_file_payload(sock, file_size):
 
 
 
-def send_request(request_obj):
-    server_info = FilesReader.read_server_info()
+def send_request(request_obj, server_info):
     request_obj_struct = request_obj.to_bytes()
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # define tcp socket
     sock.connect(server_info)
@@ -43,71 +42,70 @@ def send_request(request_obj):
     return sock
 
 
-def request_list_files(uid):
+def request_list_files(uid, server_info):
     list_request = Request.ListRequest(uid,1, 202)
-    sock = send_request(list_request)
+    sock = send_request(list_request, server_info)
 
     version_and_status_data = recv_exact(sock, 3)
     version, status = struct.unpack("<BH", version_and_status_data)
-    print("Version: ", version, " Status: ", status)
+
     if status == 211:
         data_name_len = recv_exact(sock, 2)
         name_len = struct.unpack("<H", data_name_len)[0]
         filename = recv_exact(sock, name_len)
-        # print(filename)
 
         file_size_data = recv_exact(sock, 4)
         file_size = struct.unpack("<I", file_size_data)[0]
-        # print(file_size)
 
         file_payload = recv_file_payload(sock, file_size)
         files_list = (file_payload.decode('utf-8')).splitlines()
 
         for file in files_list:
-            print(f"The file '{file}' is saved on the server")
+            print(f"[INFO] Response no. {status}: The file '{file}' is saved on the server")
 
     elif status == 1002:
-        print("No files for user")
+        print(f"[ERROR] Response no. {status}: No files for user")
 
     sock.close()
 
 
-def request_save_files(uid, filename):
+def request_save_files(uid, filename, server_info):
     req = Request.ListRequest(uid, 1, 100)
     save_file_request = Request.SaveFileRequest(request=req, filename=filename)
-    sock = send_request(save_file_request)
+    sock = send_request(save_file_request, server_info)
 
     # wait for a comment from the server
     header = recv_exact(sock, 3)
     version, status = struct.unpack('<BH', header)
     if status == 1002:
-        print("No files for this user")
+        print(f"[ERROR] Response no. {status}: No files for this user")
         return
     elif status == 1003:
-        print("A general error on the server occurred")
+        print(f"[ERROR] Response no. {status}: A general error on the server occurred")
         return
     else:
         name_len_data = recv_exact(sock, 2)
         name_len = struct.unpack('<H', name_len_data)[0]
         filename = recv_exact(sock, name_len).rstrip(b'\x00').decode('utf-8')
-    # sock.close()
+        print(f"[INFO] Response no. {status}: Saving the file '{filename}' was successful")
+    sock.close()
 
-def request_retrieve_files(uid, filename):
+def request_retrieve_files(uid, filename, server_info):
     req = Request.ListRequest(uid, 1, 200)
-    fileOpsReq = Request.FileOpsRequest(filename=filename, other=req)
-    sock = send_request(fileOpsReq)
+    file_ops_req = Request.FileOpsRequest(filename=filename, other=req)
+    sock = send_request(file_ops_req, server_info)
 
     header = recv_exact(sock, 3)
     version, status = struct.unpack('<BH', header)
     if status == 1002:
-        print("No files for this user")
+        print(f"[ERROR] Response no. {status}: No files for this user on the server")
         return
     else:
         name_len_data = recv_exact(sock, 2)
         name_len = struct.unpack('<H', name_len_data)[0]
         filename = recv_exact(sock, name_len).rstrip(b'\x00').decode('utf-8')
         if status == 1001:
-            print(f"file {filename} does not exist on the server")
+            print(f"[ERROR] Response no. {status}: File '{filename}' does not exist on the server")
             return
         file_size_data = recv_exact(sock, 4)
         file_size = struct.unpack("<I", file_size_data)[0]
@@ -119,38 +117,46 @@ def request_retrieve_files(uid, filename):
 
         with open(f"Retrieved Files\\{uid}\\{filename}", 'wb') as f:
             f.write(file_payload)
+        with open(f"Retrieved Files\\{uid}\\tmp.py", 'wb') as f:
+            pass
 
-        print(f"File {filename} was retrieved from the server")
+        print(f"[INFO] Response no. {status}: File '{filename}' was retrieved from the server successfully")
+    sock.close()
 
-def request_delete_files(uid, filename):
+
+def request_delete_files(uid, filename, server_info):
     req = Request.ListRequest(uid, 1, 201)
-    fileOpsReq = Request.FileOpsRequest(filename=filename, other=req)
-    sock = send_request(fileOpsReq)
+    file_ops_req = Request.FileOpsRequest(filename=filename, other=req)
+    sock = send_request(file_ops_req, server_info)
 
     header = recv_exact(sock, 5)
     version, status, name_len = struct.unpack('<BHH', header)
     filename = recv_exact(sock, name_len).rstrip(b'\x00').decode('utf-8')
 
     if status == 212:
-        print(f"Response from server received, file {filename} delete was successful")
+        print(f"[INFO] Response no. {status}: File {filename} delete was successful")
     else:
-        print(f"An error occurred: {status}")
+        print(f"[ERROR] Response no. {status}: An error occurred: {status}")
+
+    sock.close()
 
 
 def main():
     uid = create_id()
 
+    server_info = FilesReader.read_server_info()
     backup_list = FilesReader.read_backup_info()
 
-    request_list_files(uid)
+    request_list_files(uid, server_info)
+
     for filename in backup_list:
-        request_save_files(uid, filename)
+        request_save_files(uid, filename, server_info)
 
-    request_list_files(uid)
+    request_list_files(uid, server_info)
 
-    request_retrieve_files(uid, backup_list[0])
-    request_delete_files(uid, backup_list[0])
-    request_retrieve_files(uid, backup_list[0])
+    request_retrieve_files(uid, backup_list[0], server_info)
+    request_delete_files(uid, backup_list[0], server_info)
+    request_retrieve_files(uid, backup_list[0], server_info)
 
 
 if __name__ == "__main__":

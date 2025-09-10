@@ -1,16 +1,12 @@
-#include <boost/asio.hpp>
-#include <string>
+#include <asio.hpp>
 #include <iostream>
-#include <filesystem>
-
 #include "Network/Server.h"
 
 
-
 int main() {
-    const int port = 5000;
     try {
-        boost::asio::io_context context;
+        constexpr int port = 5000;
+        asio::io_context context;
         Server server(context, port);
         server.run();
     }

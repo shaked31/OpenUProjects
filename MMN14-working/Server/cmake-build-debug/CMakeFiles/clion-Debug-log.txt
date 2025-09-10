@@ -1,1 +1,0 @@
-CMakeLists.txt not found in C:\Users\hanoi\Desktop\CLION projects\MMN14\MMN14-working\Server Select CMakeLists.txt

@@ -16,11 +16,11 @@ const char* GeneralException::what() const noexcept {
     return message.c_str();
 }
 
-void GeneralException::sendGeneralErrorResponse(boost::asio::ip::tcp::socket sock) {
+void GeneralException::sendGeneralErrorResponse(asio::ip::tcp::socket sock) {
     Serializer serObj;
     std::vector<uint8_t> serialized = serObj.serializeResponse(res);
 
-    boost::asio::write(sock, boost::asio::buffer(serialized.data(), serialized.size()));
+    asio::write(sock, asio::buffer(serialized.data(), serialized.size()));
 
     std::cout << "Response number " <<  int(res.status) << " was sent to client" << std::endl << std::endl;
 
